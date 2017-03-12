@@ -1,0 +1,115 @@
+package org.apache.dearbaby.data;
+
+import java.util.ArrayList;
+import java.util.Map;
+
+import org.apache.dearbaby.config.InitConfig;
+import org.apache.dearbaby.util.ByteUtil;
+import org.apache.dearbaby.util.ColCompare;
+
+public class HashKey {
+
+	private int leng=100;
+
+	private int idxs=InitConfig.HASH_IDX_RATIO/8;
+	private long[] kv=new long[InitConfig.HASH_IDX_RATIO/2];
+	
+	private int rowId=0;
+	
+	private int preId=0;
+	
+	private boolean endOut = false;
+	
+	int type=-1;
+	int idx=0;
+	private SinResult res;
+	private String colName ;
+	private int headId;
+	public HashKey(SinResult s,String name){
+		res=s;
+		headId=res.getHeadId(name);
+		colName=name;
+	}
+	
+	public void add(Object key,Object value){ 
+	
+	//	System.out.println("idx  "+idx+"  indexs.length  "+indexs.length);
+		if(kv.length<idx+1){
+			kv=ByteUtil.growUp(kv, idxs);
+		}
+		kv[idx]=(long)value;
+		idx++;
+		 
+	}
+	
+	public void next(){
+		rowId++;
+		if (rowId > idx-1 ) {
+			endOut = true;
+			rowId = idx-1;
+		}
+	}
+	
+	private Object getKey(int i){
+		long l=kv[i];
+		return res.getColVal(l, colName);
+	 
+	}
+	
+	private Object getValue(int i){
+		
+		long l=kv[i];
+		return l;
+	}
+	
+	public boolean nextMatch(Object obj){
+	//	System.out.println("nextMatch   "+keys.size());
+		for(int i=preId;i< idx;i++){
+			Object o=getKey(i);
+			//System.out.println("hhhhrr   "+obj +"    ,  "+o);
+			if(ColCompare.compareObject(obj, o)==0){
+				rowId=i;
+				preId=i+1;
+				//System.out.println("hhhhrr   ");
+				return true;
+			}
+		}
+		rowId=0;
+		preId=0;
+		return false;
+	}
+	
+	public void init() {
+		rowId = 0;
+		endOut = false;
+	}
+	
+	public boolean isEnd() {
+		return rowId>=idx;
+	}
+
+	public boolean isEndOut() {
+		return endOut;
+	}
+	
+	public Object getCurrRow(){
+	 
+		return getValue(rowId);
+	}
+	 
+	public HashKey clone(){
+		HashKey hk=new HashKey(res,colName);
+
+		hk.kv=this.kv;
+		
+		hk.rowId=this.rowId;
+		
+		hk.preId=this.preId;
+		hk.idx=this.idx;
+		hk.type=this.type;
+		
+		hk.endOut = this.endOut ;
+		return hk;
+		
+	}
+}
